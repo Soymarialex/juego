@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Juego de Memoria de Cualidades</title>
+<link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
+<style>
+  body {
+    display: flex;
+    flex-direction: column; /* Permite que el contenido se apile verticalmente */
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #FFF0F5; /* Un tono rosa pálido para el fondo del cuerpo */
+    font-family: 'Varela Round', sans-serif; /* Usando Varela Round como fuente */
+    margin: 0;
+    padding: 20px;
+    box-sizing: border-box;
+    width: 100%; /* Asegura que el cuerpo ocupe todo el ancho */
+    overflow-y: auto; /* Permite el desplazamiento vertical si el contenido desborda */
+  }
+
+  #game-title-container {
+    text-align: center;
+    margin-bottom: 30px; /* Espacio debajo del título */
+    color: #333;
+  }
+
+  #game-title {
+    font-size: 2.8em; /* Tamaño grande para el título principal */
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+
+  #game-subtitle {
+    font-size: 1.2em; /* Tamaño más pequeño para la traducción */
+    color: #555;
+  }
+
+  #game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px; /* Espacio entre el tablero de juego y la información */
+    max-width: 100%; /* Asegura que se ajuste al ancho de la ventana */
+  }
+
+  .contenedor-tarjetas {
+    display: flex;
+    flex-wrap: wrap; /* Permite que las tarjetas se envuelvan a la siguiente línea */
+    justify-content: center; /* Centra toda la fila de tarjetas */
+    gap: 20px; /* Espacio entre tarjetas */
+    /* Ajustar max-width para que quepan precisamente 4 tarjetas + espacios (4*150px + 3*20px = 660px) */
+    max-width: 660px; /* Fuerza a las tarjetas a envolverse después de 4 */
+    padding: 10px; /* Añade un poco de relleno alrededor de las tarjetas */
+  }
+
+  .tarjeta {
+    width: 150px; /* Ancho ajustado para el diseño del juego de memoria */
+    height: 200px; /* Alto ajustado para el diseño del juego de memoria */
+    flex-shrink: 0; /* Evita que las tarjetas se encojan */
+    perspective: 1000px;
+    cursor: pointer;
+    border-radius: 15px; /* Bordes ligeramente menos redondeados para una apariencia más limpia */
+    box-shadow: 0 6px 15px rgba(0,0,0,0.15); /* Sombra más suave */
+    transition: transform 0.3s ease-out; /* Transición suave para hover/active */
+  }
+
+  /* Opcional: Añade un sutil efecto hover */
+  .tarjeta:not(.volteada):hover {
+    transform: translateY(-5px);
+  }
+
+  .contenido-tarjeta {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.5s ease-in-out; /* Transición de volteo más lenta y suave */
+    border-radius: 15px;
+  }
+
+  .tarjeta.volteada .contenido-tarjeta {
+    transform: rotateY(180deg);
+  }
+
+  .tarjeta.matched .contenido-tarjeta {
+    pointer-events: none; /* Deshabilita los clics en las tarjetas emparejadas */
+  }
+
+  .cara {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border-radius: 15px;
+    padding: 10px;
+    box-sizing: border-box;
+    text-align: center;
+    border: 3px solid rgba(255,255,255,0.8); /* Borde blanco sutil */
+  }
+
+  .cara-frontal {
+    background-color: #E0FFFF; /* LightCyan - pastel consistente para el frente */
+    color: #333;
+    font-size: 80px; /* Tamaño para los números en el frente */
+    font-weight: bold;
+  }
+
+  .cara-trasera {
+    color: #333;
+    transform: rotateY(180deg);
+  }
+
+  .emoji-pequeno {
+    font-size: 35px; /* Tamaño para el emoji en la parte trasera */
+    margin-bottom: 5px; /* Espacio entre el emoji y el texto */
+  }
+
+  .texto-palabra {
+    font-size: 28px; /* Tamaño para la palabra en la parte trasera */
+    font-weight: bold;
+  }
+
+  #game-info {
+    text-align: center;
+    margin-top: 20px;
+  }
+
+  #message {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 15px;
+    display: flex; /* Permite alinear elementos en línea */
+    justify-content: center;
+    align-items: baseline; /* Alinea el texto en la línea base */
+    gap: 10px; /* Espacio entre los textos */
+  }
+
+  #message .spanish-text {
+    font-size: 1em; /* Tamaño normal para el texto en español */
+  }
+
+  #message .english-text {
+    font-size: 0.7em; /* Tamaño más pequeño para la traducción en inglés */
+    color: #777; /* Un color un poco más suave para la traducción */
+  }
+
+
+  #restart-button {
+    background-color: #87CEFA; /* LightSkyBlue pastel para el botón */
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 10px;
+    font-size: 1.1em;
+    font-family: 'Varela Round', sans-serif;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+  }
+
+  #restart-button:hover {
+    background-color: #ADD8E6; /* Azul claro ligeramente más oscuro al pasar el ratón */
+    transform: translateY(-2px);
+  }
+
+  #restart-button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  /* Ajustes responsivos para pantallas más pequeñas */
+  @media (max-width: 600px) {
+    .tarjeta {
+      width: 120px;
+      height: 160px;
+    }
+    .cara-frontal {
+      font-size: 60px;
+    }
+    .emoji-pequeno {
+      font-size: 30px;
+    }
+    .texto-palabra {
+      font-size: 22px;
+    }
+    .contenedor-tarjetas {
+      gap: 15px;
+      max-width: 540px; /* Adjusted for 4*120px + 3*15px = 480 + 45 = 525px + padding */
+    }
+    #game-title {
+      font-size: 2.2em;
+    }
+    #game-subtitle {
+      font-size: 1em;
+    }
+    #message .spanish-text {
+      font-size: 0.9em;
+    }
+    #message .english-text {
+      font-size: 0.6em;
+    }
+  }
+
+  @media (max-width: 400px) {
+    .tarjeta {
+      width: 90px;
+      height: 120px;
+    }
+    .cara-frontal {
+      font-size: 45px;
+    }
+    .emoji-pequeno {
+      font-size: 25px;
+    }
+    .texto-palabra {
+      font-size: 18px;
+    }
+    .contenedor-tarjetas {
+      gap: 10px;
+      max-width: 400px; /* Adjusted for 4*90px + 3*10px = 360 + 30 = 390px + padding */
+    }
+    #game-title {
+      font-size: 1.8em;
+    }
+    #game-subtitle {
+      font-size: 0.9em;
+    }
+    #message .spanish-text {
+      font-size: 0.8em;
+    }
+    #message .english-text {
+      font-size: 0.5em;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div id="game-title-container">
+  <h1 id="game-title">Mis Cualidades</h1>
+  <p id="game-subtitle">My Qualities</p>
+</div>
+
+<div id="game-container">
+  <div class="contenedor-tarjetas" id="game-board">
+    <!-- Las tarjetas se insertarán dinámicamente aquí mediante JavaScript -->
+  </div>
+  <div id="game-info">
+    <p id="message">
+      <span class="spanish-text">¡Encuentra los pares!</span>
+      <span class="english-text">Find the pairs!</span>
+    </p>
+    <button id="restart-button">Reiniciar Juego</button>
+  </div>
+</div>
+
+<script>
+  const gameBoard = document.getElementById('game-board');
+  const messageDisplay = document.getElementById('message');
+  const restartButton = document.getElementById('restart-button');
+
+  let cards = [];
+  let flippedCards = [];
+  let matchedPairs = 0;
+  let lockBoard = false; // Evita voltear más de 2 tarjetas
+
+  // Vocabulario para los pares del juego de memoria (NUEVAS PALABRAS: CUALIDADES)
+  const vocabulario = [
+    { id: "amable", text: "Soy amable", emoji: "🤗", backColor: "#FFC0CB" },      // Rosa brillante
+    { id: "inteligente", text: "Soy inteligente", emoji: "🧠", backColor: "#98FB98" }, // Verde brillante
+    { id: "fuerte", text: "Soy fuerte", emoji: "💪", backColor: "#87CEFA" },      // Azul brillante
+    { id: "valiente", text: "Soy valiente", emoji: "🦁", backColor: "#EE82EE" }   // Morado brillante
+  ];
+
+  // Inicializa el juego
+  function initializeGame() {
+    // Limpia el tablero de juego anterior
+    gameBoard.innerHTML = '';
+    
+    // Reinicia el estado del juego
+    cards = [];
+    flippedCards = [];
+    matchedPairs = 0;
+    lockBoard = false;
+    // Actualiza el mensaje al iniciar/reiniciar el juego
+    messageDisplay.innerHTML = '<span class="spanish-text">¡Encuentra los pares!</span> <span class="english-text">Find the pairs!</span>';
+    restartButton.style.display = 'block'; // Asegura que el botón de reinicio sea visible
+
+    // Duplica el vocabulario para los pares y asigna IDs de instancia únicos
+    let gameCardsData = [...vocabulario, ...vocabulario].map((item, index) => ({
+      ...item,
+      instanceId: index, // ID único para cada instancia de tarjeta
+      isFlipped: false,
+      isMatched: false
+    }));
+
+    // Mezcla las tarjetas
+    gameCardsData = shuffle(gameCardsData);
+
+    // Crea y añade los elementos de las tarjetas
+    gameCardsData.forEach((data, index) => {
+      const cardElement = createCard(data, index + 1); // Pasa el número secuencial para el frente
+      gameBoard.appendChild(cardElement);
+      cards.push(cardElement); // Rastrea los elementos de las tarjetas
+    });
+  }
+
+  // Función para mezclar un array (Fisher-Yates)
+  function shuffle(array) {
+    let currentIndex = array.length, randomIndex;
+    while (currentIndex !== 0) {
+      randomIndex = Math.floor(Math.random() * currentIndex);
+      currentIndex--;
+      [array[currentIndex], array[randomIndex]] = [
+        array[randomIndex], array[currentIndex]];
+    }
+    return array;
+  }
+
+  // Crea un solo elemento HTML de tarjeta
+  function createCard(data, number) {
+    const tarjeta = document.createElement('div');
+    tarjeta.classList.add('tarjeta');
+    tarjeta.dataset.cardId = data.id; // Usado para la lógica de emparejamiento
+
+    const contenidoTarjeta = document.createElement('div');
+    contenidoTarjeta.classList.add('contenido-tarjeta');
+
+    const caraFrontal = document.createElement('div');
+    caraFrontal.classList.add('cara', 'cara-frontal');
+    caraFrontal.innerHTML = `<span class="numero-tarjeta">${number}</span>`;
+
+    const caraTrasera = document.createElement('div');
+    caraTrasera.classList.add('cara', 'cara-trasera');
+    caraTrasera.style.backgroundColor = data.backColor; // Aplica el color pastel específico
+    caraTrasera.innerHTML = `
+      <div class="emoji-pequeno">${data.emoji}</div>
+      <div class="texto-palabra">${data.text}</div>
+    `;
+
+    contenidoTarjeta.appendChild(caraFrontal);
+    contenidoTarjeta.appendChild(caraTrasera);
+    tarjeta.appendChild(contenidoTarjeta);
+
+    tarjeta.addEventListener('click', flipCard);
+    return tarjeta;
+  }
+
+  // Maneja el volteo de tarjetas
+  function flipCard() {
+    // Si el tablero está bloqueado, o la tarjeta ya está volteada/emparejada, no hace nada
+    // If board is locked, or card is already flipped/matched, do nothing
+    if (lockBoard || this.classList.contains('volteada') || this.classList.contains('matched')) {
+      return;
+    }
+
+    this.classList.add('volteada'); // Voltea la tarjeta
+    flippedCards.push(this); // Añade al array de tarjetas volteadas
+
+    if (flippedCards.length === 2) {
+      lockBoard = true; // Bloquea el tablero para evitar más volteos
+      setTimeout(checkForMatch, 1000); // Comprueba el emparejamiento después de un breve retraso
+    }
+  }
+
+  // Comprueba si las dos tarjetas volteadas coinciden
+  function checkForMatch() {
+    const [cardOne, cardTwo] = flippedCards;
+    const isMatch = cardOne.dataset.cardId === cardTwo.dataset.cardId;
+
+    if (isMatch) {
+      disableCards(); // Si coinciden, las mantiene volteadas y desactiva
+    } else {
+      unflipCards(); // Si no coinciden, las voltea de nuevo
+    }
+  }
+
+  // Si las tarjetas coinciden, las mantiene volteadas y deshabilita los clics
+  function disableCards() {
+    // Las tarjetas ya tienen la clase 'volteada' y no se elimina aquí
+    flippedCards[0].classList.add('matched');
+    flippedCards[1].classList.add('matched');
+    
+    // Elimina los listeners de eventos para evitar más clics en tarjetas emparejadas
+    flippedCards[0].removeEventListener('click', flipCard);
+    flippedCards[1].removeEventListener('click', flipCard);
+
+    matchedPairs++;
+    resetFlippedCards();
+    checkWin();
+  }
+
+  // Si las tarjetas no coinciden, las voltea de nuevo
+  function unflipCards() {
+    setTimeout(() => {
+      flippedCards[0].classList.remove('volteada');
+      flippedCards[1].classList.remove('volteada');
+      resetFlippedCards();
+    }, 1000);
+  }
+
+  // Reinicia el array de tarjetas volteadas y desbloquea el tablero
+  function resetFlippedCards() {
+    [flippedCards[0], flippedCards[1]] = [null, null];
+    flippedCards = [];
+    lockBoard = false;
+  }
+
+  // Comprueba si todos los pares han sido emparejados
+  function checkWin() {
+    if (matchedPairs === vocabulario.length) {
+      // Actualiza el mensaje al ganar el juego
+      messageDisplay.innerHTML = '<span class="spanish-text">¡Felicidades, encontraste todos los pares!</span> <span class="english-text">Congratulations, you found all the pairs!</span>';
+    }
+  }
+
+  // Listener de eventos para el botón de reinicio
+  restartButton.addEventListener('click', initializeGame);
+
+  // Configuración inicial del juego cuando la página carga
+  document.addEventListener('DOMContentLoaded', initializeGame);
+
+</script>
+
+</body>
+</html>
